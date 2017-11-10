@@ -125,6 +125,21 @@ extern fn handler(signum: c_int,
     }
 }
 
+#[cfg(target_os = "android")]
+fn sa_flags() -> u32 {
+    (libc::SA_RESTART as u32) |
+    (libc::SA_SIGINFO as u32) |
+    (libc::SA_NOCLDSTOP as u32)
+}
+
+
+#[cfg(not(target_os = "android"))]
+fn sa_flags() -> i32 {
+    libc::SA_RESTART |
+    libc::SA_SIGINFO |
+    libc::SA_NOCLDSTOP
+}
+
 /// Enable this module to receive signal notifications for the `signal`
 /// provided.
 ///
@@ -142,9 +157,8 @@ fn signal_enable(signal: c_int) -> io::Result<()> {
         siginfo.init.call_once(|| {
             let mut new: libc::sigaction = mem::zeroed();
             new.sa_sigaction = handler as usize;
-            new.sa_flags = libc::SA_RESTART |
-                            libc::SA_SIGINFO |
-                            libc::SA_NOCLDSTOP;
+            new.sa_flags = sa_flags();
+
             if libc::sigaction(signal, &new, &mut *siginfo.prev.get()) != 0 {
                 err = Some(io::Error::last_os_error());
             } else {
@@ -378,7 +392,7 @@ impl Signal {
             })
         })();
 
-        future::result(result).boxed()
+        Box::new(future::result(result))
     }
 }
 

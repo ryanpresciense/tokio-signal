@@ -78,7 +78,6 @@
 #![doc(html_root_url = "https://docs.rs/tokio-signal/0.1")]
 #![deny(missing_docs)]
 
-#[macro_use]
 extern crate futures;
 extern crate tokio_core;
 extern crate tokio_io;
@@ -108,13 +107,13 @@ pub fn ctrl_c(handle: &Handle) -> IoFuture<IoStream<()>> {
 
     #[cfg(unix)]
     fn ctrl_c_imp(handle: &Handle) -> IoFuture<IoStream<()>> {
-        unix::Signal::new(unix::libc::SIGINT, handle).map(|x| {
+        Box::new(unix::Signal::new(unix::libc::SIGINT, handle).map(|x| {
             x.map(|_| ()).boxed()
-        }).boxed()
+        }))
     }
 
     #[cfg(windows)]
     fn ctrl_c_imp(handle: &Handle) -> IoFuture<IoStream<()>> {
-        windows::Event::ctrl_c(handle).map(|x| x.boxed()).boxed()
+        Box::new(windows::Event::ctrl_c(handle).map(|x| x.boxed()))
     }
 }
